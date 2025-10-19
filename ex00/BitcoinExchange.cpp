@@ -6,7 +6,7 @@
 /*   By: mkulikov <mkulikov@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/12 17:10:45 by mkulikov          #+#    #+#             */
-/*   Updated: 2025/10/19 15:59:13 by mkulikov         ###   ########.fr       */
+/*   Updated: 2025/10/19 18:14:40 by mkulikov         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -66,6 +66,57 @@ bool BitcoinExchange::Date::operator<(const Date& r) const
 	return toKey() < r.toKey();
 }
 
+std::string BitcoinExchange::Utils::_ltrim(const std::string& s)
+{
+	size_t p = s.find_first_not_of(" \t");
+	return p == std::string::npos ? "" : s.substr(p);
+}
+
+std::string BitcoinExchange::Utils::_rtrim(const std::string& s)
+{
+	size_t p = s.find_last_not_of(" \t");
+	return p == std::string::npos ? "" : s.substr(0, p + 1);
+}
+
+std::string BitcoinExchange::Utils::trim(const std::string& s)
+{
+	return _rtrim(_ltrim(s));
+}
+
+bool BitcoinExchange::Utils::isNumber(const std::string& s)
+{
+	if (s.empty())
+	{
+		return false;
+	}
+
+	size_t i = 0;
+	if (s[i] == '-')
+	{
+		++i;
+	}
+	bool dot = false;
+	bool digit = false;
+	for (; i < s.size(); ++i)
+	{
+		char c = s[i];
+		if (c == '.')
+		{
+			if (dot) return false;
+			dot = true;
+		}
+		else if (std::isdigit(static_cast<unsigned char>(c)))
+		{
+			digit = true;
+		}
+		else
+		{
+			return false;
+		}
+	}
+	return digit;
+}
+
 BitcoinExchange::BitcoinExchange() {}
 
 BitcoinExchange::BitcoinExchange(const BitcoinExchange& other)
@@ -81,6 +132,64 @@ BitcoinExchange& BitcoinExchange::operator=(const BitcoinExchange& other)
 }
 
 BitcoinExchange::~BitcoinExchange() {}
+
+void BitcoinExchange::exchange(const std::string &line)
+{
+	if (line.empty())
+	{
+		std::cout << "Error: bad input => " << line << "\n";
+		return;
+	}
+
+	if (Utils::trim(line) == FORMAT)
+	{
+		return;
+	}
+
+	size_t bar = line.find('|');
+	if (bar == std::string::npos)
+	{
+		std::cout << "Error: bad input => " << line << "\n";
+		return;
+	}
+
+	std::string dateStr = Utils::trim(line.substr(0, bar));
+	std::string valStr  = Utils::trim(line.substr(bar + 1));
+
+	Date date;
+	if (!Date::isValid(dateStr, date))
+	{
+		std::cout << "Error: bad input => " << dateStr << "\n";
+		return;
+	}
+
+	if (!Utils::isNumber(valStr))
+	{
+		std::cout << "Error: bad input => " << valStr << "\n";
+		return;
+	}
+
+	double value = std::strtod(valStr.c_str(), 0);
+	if (value <= 0)
+	{
+		std::cout << "Error: not a positive number.\n";
+		return;
+	}
+	if (value > 1000)
+	{
+		std::cout << "Error: too large a number.\n";
+		return;
+	}
+
+	double rate;
+	if (!getRate(date, rate))
+	{
+		std::cout << "Error: bad input => " << line << "\n";
+		return;
+	}
+
+	std::cout << dateStr << " => " << valStr << " = " << value * rate << "\n";
+}
 
 bool BitcoinExchange::load(const std::string& path)
 {

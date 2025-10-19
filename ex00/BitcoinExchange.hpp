@@ -6,7 +6,7 @@
 /*   By: mkulikov <mkulikov@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/12 17:12:05 by mkulikov          #+#    #+#             */
-/*   Updated: 2025/10/19 15:01:21 by mkulikov         ###   ########.fr       */
+/*   Updated: 2025/10/19 18:14:57 by mkulikov         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,6 +15,12 @@
 
 #include <map>
 #include <string>
+#include <fstream>
+#include <iostream>
+#include <cstdlib>
+#include <cctype>
+
+#define FORMAT "date | value"
 
 class BitcoinExchange
 {
@@ -35,10 +41,22 @@ public:
 		static bool _fromString(const std::string& s,int& y,int& m,int& d);
 	};
 
+	struct Utils
+	{
+		static std::string trim(const std::string& s);
+		static bool isNumber(const std::string& s);
+
+	private:
+		static std::string _ltrim(const std::string& s);
+		static std::string _rtrim(const std::string& s);
+	};
+
 	BitcoinExchange();
 	BitcoinExchange(const BitcoinExchange& other);
 	BitcoinExchange& operator=(const BitcoinExchange& other);
 	~BitcoinExchange();
+
+	void exchange(const std::string& line);
 
 	bool load(const std::string& csvPath);
 	bool getRate(const Date& d,double& rate) const;
