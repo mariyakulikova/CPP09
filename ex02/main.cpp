@@ -3,60 +3,81 @@
 /*                                                        :::      ::::::::   */
 /*   main.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: manya <manya@student.42.fr>                +#+  +:+       +#+        */
+/*   By: mkulikov <mkulikov@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/11/21 17:10:45 by mkulikov          #+#    #+#             */
-/*   Updated: 2025/11/23 17:53:10 by manya            ###   ########.fr       */
+/*   Updated: 2025/12/07 16:41:22 by mkulikov         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "PmergeMe.hpp"
-#include <iostream>
 #include <cstdlib>
-#include <cctype>
 
 bool isPositiveNumber(const char* str) {
-    if (!str || *str == '\0')
-        return false;
+	if (!str || *str == '\0')
+		return false;
 
-    for (int i = 0; str[i]; i++) {
-        if (!std::isdigit(str[i]))
-            return false;
-    }
+	for (int i = 0; str[i]; i++) {
+		if (!std::isdigit(str[i]))
+			return false;
+	}
 
-    return true;
+	return true;
+}
+
+void print(const std::string &std, std::vector<int> &vec) {
+	std::cout << std;
+	for (std::vector<int>::size_type i = 0; i < vec.size(); i++) {
+		std::cout << vec[i];
+		if (i != vec.size() - 1)
+			std::cout << " ";
+	}
+	std::cout << std::endl;
 }
 
 int main(int argc, const char * argv[]) {
-    if (argc < 2) {
-        std::cerr << "Please provide at least two arguments!\n";
-        return 1;
-    }
+	if (argc < 2) {
+		std::cerr << "Please provide at least two arguments!\n";
+		return 1;
+	}
 
-    std::vector<int> vec;
-    std::deque<int> dq;
+	std::vector<int> vec;
+	std::deque<int> dq;
 
-    for (int i = 1; i < argc; i++) {
-        const char* arg = argv[i];
+	for (int i = 1; i < argc; i++) {
+		const char* arg = argv[i];
 
-        if (!isPositiveNumber(arg)) {
-            std::cerr << "Error: \"" << arg << "\" is not a positive number\n";
-            return 1;
-        }
+		if (!isPositiveNumber(arg)) {
+			std::cerr << "Error: \"" << arg << "\" is not a positive number\n";
+			return 1;
+		}
 
-        long value = std::atoi(arg);
+		long value = std::atoi(arg);
 
-        if (value <= 0) {
-            std::cerr << "Error: number must be > 0: " << arg << "\n";
-            return 1;
-        }
+		vec.push_back(value);
+		dq.push_back(value);
+	}
 
-        vec.push_back(value);
-        dq.push_back(value);
-    }
-
-    PmergeMe::sort(vec);
-    PmergeMe::sort(dq);
-    
-    return 0;
+	print("Before: ", vec);
+	
+	double durationVec = PmergeMe::sort(vec);
+	double durationDeq = PmergeMe::sort(dq);
+	
+	print("After: ", vec);
+	
+	std::cout << "Time to process a range of "
+			<< vec.size()
+			<< " elements with std::vector : "
+			<< std::fixed << std::setprecision(5)
+			<< durationVec << " us"
+			<< std::endl;
+			
+	std::cout << "Time to process a range of "
+			  << dq.size()
+			  << " elements with std::deque : "
+			  << std::fixed << std::setprecision(5)
+			  << durationDeq << " us"
+			  << std::endl;
+	
+	return 0;
 }
