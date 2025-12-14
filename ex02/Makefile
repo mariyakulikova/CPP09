@@ -1,27 +1,27 @@
-NAME    = PmergeMe
-CXX     = c++
-CXXFLAGS= -Wextra -Wall -Werror -std=c++98 -MMD
-RM      = rm -f
+CXX=c++
+CFLAGS=-Wall -Wextra -Werror -std=c++98
 
-SRCS    = main.cpp PmergeMe.cpp
-OBJS    = $(SRCS:.cpp=.o)
-DEPS    = $(OBJS:.o=.d)
--include $(DEPS)
+NAME=PmergeMe
+SRCS=main.cpp PmergeMe.cpp
+HEADER=PmergeMe.hpp
+OBJS=$(SRCS:%.cpp=objs/%.o)
 
 all: $(NAME)
 
-$(NAME): $(OBJS)
-	$(CXX) $(CXXFLAGS) -o $@ $^
+$(NAME): $(OBJS) $(HEADER)
+	$(CXX) $(CFLAGS) $(OBJS) -o $@
 
-%.o: %.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+objs/%.o: %.cpp $(HEADER)
+	@mkdir -p objs
+	$(CXX) $(CFLAGS) -c $< -o $@
+
+re: fclean
+	@$(MAKE) --no-print-directory
 
 clean:
-	$(RM) $(OBJS) $(DEPS)
+	rm -rf objs
 
 fclean: clean
-	$(RM) $(NAME)
-
-re: fclean all
+	rm -f $(NAME)
 
 .PHONY: all clean fclean re

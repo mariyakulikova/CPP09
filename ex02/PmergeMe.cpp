@@ -6,11 +6,13 @@
 /*   By: mkulikov <mkulikov@student.42berlin.de>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/11/21 17:10:45 by mkulikov          #+#    #+#             */
-/*   Updated: 2025/12/07 16:42:29 by mkulikov         ###   ########.fr       */
+/*   Updated: 2025/12/14 18:11:57 by mkulikov         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "PmergeMe.hpp"
+
+int PmergeMe::counter = 0;
 
 PmergeMe::~PmergeMe() {}
 
@@ -26,253 +28,195 @@ PmergeMe::PmergeMe(const PmergeMe &other) {
 }
 
 double PmergeMe::sort(std::vector<int> &vec) {
+	counter = 0;
 	clock_t start = clock();
-	_fordJohnsonSort(vec);
+	_fordJohnsonSort(vec, 1);
 	clock_t end = clock();
 	return (double)(end - start) / CLOCKS_PER_SEC * 1000000.0;
 }
 
-double PmergeMe::sort(std::deque<int> &dq) {
+double PmergeMe::sort(std::list<int> &list) {
+	counter = 0;
 	clock_t start = clock();
-	_fordJohnsonSort(dq);
+	_fordJohnsonSort(list, 1);
 	clock_t end = clock();
 	return (double)(end - start) / CLOCKS_PER_SEC * 1000000.0;
 }
 
-std::vector<int> PmergeMe::_jacobsthalSequence(int n) {
-	std::vector<int> sequence;
-
-	if (n <= 0) {
-		return sequence;
-	}
-
-	int j0 = 0;
-	int j1 = 1;
-
-	while (j1 <= n) {
-		if (j1 > 0 && (sequence.empty() || j1 != sequence.back())) {
-			sequence.push_back(j1);
-		}
-
-		int j2 = j1 + 2 * j0;
-		j0 = j1;
-		j1 = j2;
-	}
-
-	return sequence;
+int PmergeMe::_jacobstahlNumber(size_t n) {
+	return round((pow(2, n + 1) + pow(-1, n)) / 3);
 }
 
-void PmergeMe::_fordJohnsonSort(std::vector<int> &vec) {
-	std::vector<int>::size_type n = vec.size();
-	
-	if (n <= 1) {
+void PmergeMe::_fordJohnsonSort(std::vector<int> &vec, size_t level) {
+	int _level = static_cast<int>(level);
+
+	int pairsNbr = vec.size() / _level;
+	if (pairsNbr < 2)
 		return;
+
+	bool isOdd = pairsNbr % 2 == 1;
+
+	std::vector<int>::iterator start = vec.begin();
+	std::vector<int>::iterator last = _next(vec.begin(), _level * (pairsNbr));
+	std::vector<int>::iterator end = _next(last, -(isOdd * _level));
+
+	int jump = 2 * _level;
+	for (std::vector<int>::iterator it = start; it != end; std::advance(it, jump)) {
+		std::vector<int>::iterator currPair = _next(it, _level - 1);
+		std::vector<int>::iterator _nextPair = _next(it, _level * 2 - 1);
+		if (_comp(_nextPair, currPair))
+			_swap(currPair, _level);
+	}
+	_fordJohnsonSort(vec, _level * 2);
+
+	std::vector<std::vector<int>::iterator> main;
+	std::vector<std::vector<int>::iterator> pend;
+
+	main.push_back(_next(vec.begin(), _level - 1));
+	main.push_back(_next(vec.begin(), _level * 2 - 1));
+
+	for (int i = 4; i <= pairsNbr; i += 2) {
+		pend.push_back(_next(vec.begin(), _level * (i - 1) - 1));
+		main.push_back(_next(vec.begin(), _level * i - 1));
 	}
 
-	if (n == 2) {
-		if (vec[0] > vec[1]) {
-			int tmp = vec[0];
-			vec[0] = vec[1];
-			vec[1] = tmp;
+	if (isOdd)
+		pend.push_back(_next(end, _level - 1));
+
+	int prevJacobstahl = _jacobstahlNumber(1);
+	int insertedCounter = 0;
+	for (int k = 2;; k++)
+	{
+		int currJacobstahl = _jacobstahlNumber(k);
+		int jacobsthalDiff = currJacobstahl - prevJacobstahl;
+		int offset = 0;
+		if (jacobsthalDiff > static_cast<int>(pend.size()))
+			break;
+		int toInsert = jacobsthalDiff;
+		std::vector<std::vector<int>::iterator>::iterator pendIt = _next(pend.begin(), jacobsthalDiff - 1);
+		std::vector<std::vector<int>::iterator>::iterator boundIt = _next(main.begin(), currJacobstahl + insertedCounter);
+		while (toInsert)
+		{
+			std::vector<std::vector<int>::iterator>::iterator idx = std::upper_bound(main.begin(), boundIt, *pendIt, _comp<std::vector<int>::iterator>);
+			std::vector<std::vector<int>::iterator>::iterator inserted = main.insert(idx, *pendIt);
+			toInsert--;
+			pendIt = pend.erase(pendIt);
+			std::advance(pendIt, -1);
+			offset += (inserted - main.begin()) == currJacobstahl + insertedCounter;
+			boundIt = _next(main.begin(), currJacobstahl + insertedCounter - offset);
 		}
-		return;
+		prevJacobstahl = currJacobstahl;
+		insertedCounter += jacobsthalDiff;
+		offset = 0;
 	}
 
-	std::vector<int> main;
-	std::vector<int> pend;
-
-	main.reserve(n / 2 + 1);
-	pend.reserve(n / 2 + 1);
-
-	std::vector<int>::size_type pairCount = n / 2;
-	std::vector<int>::size_type i;
-
-	for (i = 0; i < pairCount; ++i) {
-		int a = vec[2 * i];
-		int b = vec[2 * i + 1];
-
-		if (a < b) {
-			pend.push_back(a);
-			main.push_back(b);
-		} else {
-			pend.push_back(b);
-			main.push_back(a);
-		}
+	for (ssize_t i = pend.size() - 1; i >= 0; i--)
+	{
+		std::vector<std::vector<int>::iterator>::iterator curr_pend = _next(pend.begin(), i);
+		std::vector<std::vector<int>::iterator>::iterator curr_bound = _next(main.begin(), main.size() - pend.size() + i + isOdd);
+		std::vector<std::vector<int>::iterator>::iterator idx = std::upper_bound(main.begin(), curr_bound, *curr_pend, _comp<std::vector<int>::iterator>);
+		main.insert(idx, *curr_pend);
 	}
 
-	if (n % 2 != 0) {
-		pend.push_back(vec[n - 1]);
-	}
-
-	_fordJohnsonSort(main);
-
-	std::vector<int> sorted = main;
-
-	if (!pend.empty()) {
-		_binaryInsert(sorted, pend[0]);
-	}
-
-	if (pend.size() > 1) {
-		std::vector<int> jacob = _jacobsthalSequence(static_cast<int>(pend.size() - 1));
-
-		std::vector<bool> used(pend.size(), false);
-		std::vector<int> order;
-
-		used[0] = true;
-
-		for (std::vector<int>::size_type j = 0; j < jacob.size(); ++j) {
-			int idx = jacob[j];
-
-			if (idx <= 0)
-				continue;
-			if (static_cast<std::vector<int>::size_type>(idx) >= pend.size())
-				continue;
-
-			if (!used[idx]) {
-				order.push_back(idx);
-				used[idx] = true;
-			}
-		}
-
-		for (std::vector<int>::size_type k = 1; k < pend.size(); ++k) {
-			if (!used[k]) {
-				order.push_back(static_cast<int>(k));
-			}
-		}
-
-		for (std::vector<int>::size_type t = 0; t < order.size(); ++t) {
-			int pendIndex = order[t];
-			_binaryInsert(sorted, pend[pendIndex]);
+	std::vector<int> copy;
+	copy.reserve(vec.size());
+	for (std::vector<std::vector<int>::iterator>::iterator it = main.begin(); it != main.end(); it++)
+	{
+		for (int i = 0; i < _level; i++)
+		{
+			std::vector<int>::iterator pair_start = *it;
+			std::advance(pair_start, -_level + i + 1);
+			copy.insert(copy.end(), *pair_start);
 		}
 	}
 
-	vec = sorted;
+	std::vector<int>::iterator vecIt = vec.begin();
+	std::vector<int>::iterator copyIt = copy.begin();
+	while (copyIt != copy.end()) {
+		*vecIt++ = *copyIt++;
+	}
 }
 
-void PmergeMe::_binaryInsert(std::vector<int> &vec, int value) {
-	std::vector<int>::size_type left = 0;
-	std::vector<int>::size_type right = vec.size();
-	
-	if (vec.empty()) {
-		vec.push_back(value);
+void PmergeMe::_fordJohnsonSort(std::list<int> &list, size_t level) {
+	int _level = static_cast<int>(level);
+
+	int pairsNbr = list.size() / _level;
+	if (pairsNbr < 2)
 		return;
+
+	bool isOdd = pairsNbr % 2 == 1;
+
+	std::list<int>::iterator start = list.begin();
+	std::list<int>::iterator last = _next(list.begin(), _level * (pairsNbr));
+	std::list<int>::iterator end = _next(last, -(isOdd * _level));
+
+	int jump = 2 * _level;
+	for (std::list<int>::iterator it = start; it != end; std::advance(it, jump)) {
+		std::list<int>::iterator currPair = _next(it, _level - 1);
+		std::list<int>::iterator _nextPair = _next(it, _level * 2 - 1);
+		if (_comp(_nextPair, currPair))
+			_swap(currPair, _level);
 	}
-	
-	while (left < right) {
-		std::vector<int>::size_type mid = left + (right - left) / 2;
-		if (vec[mid] < value) {
-			left = mid + 1;
+	_fordJohnsonSort(list, _level * 2);
+
+	std::list<std::list<int>::iterator> main;
+	std::list<std::list<int>::iterator> pend;
+
+	main.push_back(_next(list.begin(), _level - 1));
+	main.push_back(_next(list.begin(), _level * 2 - 1));
+
+	for (int i = 4; i <= pairsNbr; i += 2) {
+		pend.push_back(_next(list.begin(), _level * (i - 1) - 1));
+		main.push_back(_next(list.begin(), _level * i - 1));
+	}
+
+	if (isOdd)
+		pend.push_back(_next(end, _level - 1));
+
+	int prevJacobstahl = _jacobstahlNumber(1);
+	int insertedCounter = 0;
+	for (int k = 2;; k++) {
+		int currJacobstahl = _jacobstahlNumber(k);
+		int jacobsthalDiff = currJacobstahl - prevJacobstahl;
+		int offset = 0;
+		if (jacobsthalDiff > static_cast<int>(pend.size()))
+			break;
+		int toInsert = jacobsthalDiff;
+		std::list<std::list<int>::iterator>::iterator pendIt = _next(pend.begin(), jacobsthalDiff - 1);
+		std::list<std::list<int>::iterator>::iterator boundIt = _next(main.begin(), currJacobstahl + insertedCounter);
+		while (toInsert) {
+			std::list<std::list<int>::iterator>::iterator idx = std::upper_bound(main.begin(), boundIt, *pendIt, _comp<std::list<int>::iterator>);
+			std::list<std::list<int>::iterator>::iterator inserted = main.insert(idx, *pendIt);
+			toInsert--;
+			pendIt = pend.erase(pendIt);
+			std::advance(pendIt, -1);
+			offset += std::distance(main.begin(), inserted) == currJacobstahl + insertedCounter;
+			boundIt = _next(main.begin(), currJacobstahl + insertedCounter - offset);
 		}
-		else {
-			right = mid;
-		}
-	}
-	vec.insert(vec.begin() + static_cast<std::vector<int>::difference_type>(left), value);
-}
-
-void PmergeMe::_fordJohnsonSort(std::deque<int> &dq) {
-	std::deque<int>::size_type n = dq.size();
-
-	if (n <= 1) {
-		return;
+		prevJacobstahl = currJacobstahl;
+		insertedCounter += jacobsthalDiff;
+		offset = 0;
 	}
 
-	if (n == 2) {
-		if (dq[0] > dq[1]) {
-			int tmp = dq[0];
-			dq[0] = dq[1];
-			dq[1] = tmp;
-		}
-		return;
+	for (ssize_t i = pend.size() - 1; i >= 0; i--) {
+		std::list<std::list<int>::iterator>::iterator curr_pend = _next(pend.begin(), i);
+		std::list<std::list<int>::iterator>::iterator curr_bound = _next(main.begin(), main.size() - pend.size() + i + isOdd);
+		std::list<std::list<int>::iterator>::iterator idx = std::upper_bound(main.begin(), curr_bound, *curr_pend, _comp<std::list<int>::iterator>);
+		main.insert(idx, *curr_pend);
 	}
 
-	std::deque<int> main;
-	std::deque<int> pend;
-
-	std::deque<int>::size_type pairCount = n / 2;
-	std::deque<int>::size_type i;
-
-	for (i = 0; i < pairCount; ++i) {
-		int a = dq[2 * i];
-		int b = dq[2 * i + 1];
-
-		if (a < b) {
-			pend.push_back(a);
-			main.push_back(b);
-		} else {
-			pend.push_back(b);
-			main.push_back(a);
-		}
-	}
-
-	if (n % 2 != 0) {
-		pend.push_back(dq[n - 1]);
-	}
-
-	_fordJohnsonSort(main);
-
-	std::deque<int> sorted = main;
-
-	if (!pend.empty()) {
-		_binaryInsert(sorted, pend[0]);
-	}
-
-	if (pend.size() > 1) {
-		std::vector<int> jacob = _jacobsthalSequence(static_cast<int>(pend.size() - 1));
-
-		std::vector<bool> used(pend.size(), false);
-		std::deque<int> order;
-
-		used[0] = true;
-
-		for (std::vector<int>::size_type j = 0; j < jacob.size(); ++j) {
-			int idx = jacob[j];
-
-			if (idx <= 0)
-				continue;
-			if (static_cast<std::deque<int>::size_type>(idx) >= pend.size())
-				continue;
-
-			if (!used[idx]) {
-				order.push_back(idx);
-				used[idx] = true;
-			}
-		}
-
-		for (std::deque<int>::size_type k = 1; k < pend.size(); ++k) {
-			if (!used[k]) {
-				order.push_back(static_cast<int>(k));
-			}
-		}
-
-		for (std::deque<int>::size_type t = 0; t < order.size(); ++t) {
-			int pendIndex = order[t];
-			_binaryInsert(sorted, pend[pendIndex]);
+	std::list<int> copy;
+	for (std::list<std::list<int>::iterator>::iterator it = main.begin(); it != main.end(); it++) {
+		for (int i = 0; i < _level; i++) {
+			std::list<int>::iterator pair_start = *it;
+			std::advance(pair_start, -_level + i + 1);
+			copy.push_back(*pair_start);
 		}
 	}
 
-	dq = sorted;
-}
-
-
-void PmergeMe::_binaryInsert(std::deque<int> &dq, int value) {
-	if (dq.empty()) {
-		dq.push_back(value);
-		return;
+	std::list<int>::iterator listIt = list.begin();
+	std::list<int>::iterator copyIt = copy.begin();
+	while (copyIt != copy.end()) {
+		*listIt++ = *copyIt++;
 	}
-
-	std::deque<int>::iterator low = dq.begin();
-	std::deque<int>::iterator high = dq.end();
-
-	while (low < high) {
-		std::deque<int>::iterator mid = low + (high - low) / 2;
-
-		if (*mid < value) {
-			low = mid + 1;
-		} else {
-			high = mid;
-		}
-	}
-
-	dq.insert(low, value);
 }
